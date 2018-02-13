@@ -5,7 +5,7 @@ package components;
  */
 public interface ServerInfo {
 
-    String SERVER_IP_ADDRESS = "192.168.0.171";//Change to change server
+    String SERVER_IP_ADDRESS = "192.168.191.1";//Change to change server
     //also make change in client app
     int SERVER_PORT = 4588;
 }

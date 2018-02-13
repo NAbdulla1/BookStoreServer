@@ -7,6 +7,7 @@ package bookstoreserver;
 
 import components.Book;
 import components.Customer;
+import components.Notif;
 import components.Pair;
 import components.Publisher;
 import components.User;
@@ -366,7 +367,7 @@ public class DataBaseHandler {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -386,7 +387,7 @@ public class DataBaseHandler {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -407,7 +408,7 @@ public class DataBaseHandler {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -428,7 +429,7 @@ public class DataBaseHandler {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -448,7 +449,7 @@ public class DataBaseHandler {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -470,7 +471,7 @@ public class DataBaseHandler {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -491,7 +492,7 @@ public class DataBaseHandler {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -512,7 +513,7 @@ public class DataBaseHandler {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -535,7 +536,7 @@ public class DataBaseHandler {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -558,7 +559,7 @@ public class DataBaseHandler {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -577,12 +578,12 @@ public class DataBaseHandler {
                     + " AND CategoryID=" + getCategoryID(connection, category)
                     + " AND SellerID=" + sellerID
                     + " AND Title LIKE \'%%" + title + "%%\';");
-            ArrayList<Book> list = new ArrayList<Book>();
+            ArrayList<Book> list = new ArrayList<>();
             while (resultSet.next()) {
                 Book b = new Book(
                         resultSet.getString("Title"),
                         getAuthorName(connection, resultSet.getInt("AuthorID")),
-                        sellerID,
+                        resultSet.getInt("SellerID"),
                         getCategory(connection, resultSet.getInt("CategoryID")),
                         resultSet.getInt("StockCount"),
                         resultSet.getDouble("Price"),
@@ -656,21 +657,99 @@ public class DataBaseHandler {
         connection.close();
         return list;
     }
-    /*
-    static Pair<ArrayList<Integer>, ArrayList<String>> getAllPublishers() throws SQLException, ClassNotFoundException {
-        Pair<ArrayList<Integer>, ArrayList<String>> list = new Pair<>(new ArrayList<Integer>(), new ArrayList<String>());
+
+    static boolean addPublisherNotif(int pid, int cid, String msg) throws SQLException, ClassNotFoundException {
+        Connection connection = connectToDB();
+        if (connection == null) {
+            return false;
+        }
+        Statement statement = connection.createStatement();
+        int effRow = statement.executeUpdate(String.format("INSERT INTO publishernotification(isNew, PublisherID, CustomerID, Message) VALUES(1, %d, %d, %s);",
+                pid, cid, "\'" + msg + "\'"));
+
+        statement.close();
+        connection.close();
+        return effRow > 0;
+    }
+
+    static ArrayList<Notif> getNotifList(UserType userType, Integer userID) throws SQLException, ClassNotFoundException {
         Connection connection = connectToDB();
         if (connection == null) {
             return null;
         }
-        Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("SELECT ID, Name FROM sellerTable;");
-        while (resultSet.next()) {
-            list.getFirst().add(resultSet.getInt("ID"));
-            list.getSecond().add(resultSet.getString("Name"));
+
+        if (userType == UserType.PUBLISHER) {
+            Statement statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery("SELECT * FROM publishernotification WHERE PublisherID="
+                    + userID + ";");
+            ArrayList<Notif> list = new ArrayList<>();
+            while (resultSet.next()) {
+                Notif n = new Notif(resultSet.getInt("ID"),
+                        resultSet.getInt("CustomerID"),
+                        resultSet.getInt("PublisherID"),
+                        userType,
+                        resultSet.getString("Message"),
+                        resultSet.getInt("isNew") == 1);
+                list.add(n);
+            }
+            statement.close();
+            connection.close();
+            return list;
+        } else {
+            Statement statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery("SELECT * FROM customernotification WHERE CustomerID="
+                    + userID + ";");
+            ArrayList<Notif> list = new ArrayList<>();
+            while (resultSet.next()) {
+                Notif n = new Notif(resultSet.getInt("ID"),
+                        resultSet.getInt("CustomerID"),
+                        resultSet.getInt("PublisherID"),
+                        userType,
+                        resultSet.getString("Message"),
+                        resultSet.getInt("isNew") == 1);
+                list.add(n);
+            }
+            statement.close();
+            connection.close();
+            return list;
         }
+    }
+
+    static boolean updateNotifList(Notif n) throws SQLException, ClassNotFoundException {
+        Connection connection = connectToDB();
+        if (connection == null) {
+            return false;
+        }
+
+        if (n.getUserType() == UserType.PUBLISHER) {
+            Statement statement = connection.createStatement();
+            int effrow = statement.executeUpdate("UPDATE publishernotification SET isNew=0 WHERE ID="
+                    + n.getNotifID() + ";");
+            statement.close();
+            connection.close();
+            return effrow > 0;
+        } else {
+            Statement statement = connection.createStatement();
+            int effrow = statement.executeUpdate("UPDATE customernotification SET isNew=0 WHERE ID="
+                    + n.getNotifID() + ";");
+            statement.close();
+            connection.close();
+            return effrow > 0;
+        }
+    }
+
+    static boolean addCustomerNotif(int cid, int pid, String msg) throws SQLException, ClassNotFoundException {
+        Connection connection = connectToDB();
+        if (connection == null) {
+            return false;
+        }
+        Statement statement = connection.createStatement();
+        int effRow = statement.executeUpdate(String.format("INSERT INTO customernotification(isNew, CustomerID, PublisherID, Message) VALUES(1, %d, %d, %s);",
+                cid, pid, "\'" + msg + "\'"));
+
         statement.close();
         connection.close();
-        return list;
-    }*/
+        return effRow > 0;
+
+    }
 }

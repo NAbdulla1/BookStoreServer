@@ -2,7 +2,6 @@ package bookstoreserver;
 
 import components.*;
 import java.io.*;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.SQLException;
@@ -10,13 +9,13 @@ import java.util.ArrayList;
 
 public class BookStoreServer {
 
-    private static final String SERVER_IP_ADDRESS = ServerInfo.SERVER_IP_ADDRESS;
+//    private static final String SERVER_IP_ADDRESS = ServerInfo.SERVER_IP_ADDRESS;
     private static final int SERVER_PORT = ServerInfo.SERVER_PORT;
 
     public static void main(String[] args) {
 
         try {
-            ServerSocket serverSocket = new ServerSocket(SERVER_PORT, 50, InetAddress.getByName(SERVER_IP_ADDRESS));
+            ServerSocket serverSocket = new ServerSocket(SERVER_PORT, 50);
             if (serverSocket == null) {
                 System.err.println("Can't Start server");
                 return;
@@ -187,6 +186,53 @@ public class BookStoreServer {
                                     oos.flush();
                                 }
                                 break;
+                            case ORDER_BOOK:
+                                if (addBookOrder(ois)) {
+                                    oos.writeObject(Boolean.TRUE);
+                                    oos.flush();
+                                } else {
+                                    oos.writeObject(Boolean.FALSE);
+                                    oos.flush();
+                                    oos.writeObject("Unknown error!");
+                                    oos.flush();
+                                }
+                                break;
+                            case GET_NOTIFICATIONS:
+                                ArrayList<Notif> notiflist = getNotifList(ois);
+                                if (notiflist != null) {
+                                    oos.writeObject(Boolean.TRUE);
+                                    oos.flush();
+                                    oos.writeObject(notiflist);
+                                    oos.flush();
+                                } else {
+                                    oos.writeObject(Boolean.FALSE);
+                                    oos.flush();
+                                    oos.writeObject("error in notification query");
+                                    oos.flush();
+                                }
+                                break;
+                            case UPD_NOTIF:
+                                if (updateNotifList(ois)) {
+                                    oos.writeObject(Boolean.TRUE);
+                                    oos.flush();
+                                } else {
+                                    oos.writeObject(Boolean.FALSE);
+                                    oos.flush();
+                                    oos.writeObject("Unknown error!");
+                                    oos.flush();
+                                }
+                                break;
+                            case CUSTOMER_NOTIF:
+                                if (addCustomerNotif(ois)) {
+                                    oos.writeObject(Boolean.TRUE);
+                                    oos.flush();
+                                } else {
+                                    oos.writeObject(Boolean.FALSE);
+                                    oos.flush();
+                                    oos.writeObject("Unknown error!");
+                                    oos.flush();
+                                }
+                                break;
                             default:
                                 System.err.println("Unknown Command.");
                                 break;
@@ -311,5 +357,30 @@ public class BookStoreServer {
         String category = bookSub.getBookSubCategory().length() == 0 ? null : bookSub.getBookSubCategory();
 
         return DataBaseHandler.getBookList(title, seller, author, category);
+    }
+
+    private static boolean addBookOrder(ObjectInputStream ois) throws SQLException, ClassNotFoundException, IOException {
+        BookOrder bo = (BookOrder) ois.readObject();
+
+        String msg = String.format("%s wants to buy %d copies of %s", bo.getOrderedCustomer().getUserName(),
+                bo.getOrderedCopy(), bo.getOrderedBook().getBookTitle());
+        return DataBaseHandler.addPublisherNotif(bo.getOrderedBook().getPublisherID(), bo.getOrderedCustomer().getUserID(), msg);
+    }
+
+    private static ArrayList<Notif> getNotifList(ObjectInputStream ois) throws IOException, ClassNotFoundException, SQLException {
+        User user = (User) ois.readObject();
+        return DataBaseHandler.getNotifList(user.getUserType(), user.getUserID());
+    }
+
+    private static boolean updateNotifList(ObjectInputStream ois) throws IOException, ClassNotFoundException, SQLException {
+        Notif n = (Notif) ois.readObject();
+        return DataBaseHandler.updateNotifList(n);
+    }
+
+    private static boolean addCustomerNotif(ObjectInputStream ois) throws SQLException, ClassNotFoundException, IOException {
+        Pair<Integer, Integer> pp = (Pair<Integer, Integer>) ois.readObject();
+
+        String msg = "We have got your order. We will contact you soon.";
+        return DataBaseHandler.addCustomerNotif(pp.getFirst(), pp.getSecond(), msg);
     }
 }
